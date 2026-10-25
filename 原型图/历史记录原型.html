@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>智能问诊系统 - 历史记录（原型）</title>
+<style>
+  :root {
+    --teal: #1a7a6e; --teal-deep: #0d6e63; --teal-light: #eef7f6;
+    --bg-soft: #fafaf7; --border: #e4e9e8;
+    --danger: #e74c3c; --ok: #2e9e6b; --warn: #e6a23c;
+    --text: #26333a; --text-sub: #7f8b90;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(180deg, #0d6e63 0%, #1a7a6e 60%, #2d8b7e 100%);
+    color: var(--text);
+  }
+  .app {
+    height: 100vh; height: 100dvh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 28px 20px; gap: 20px;
+  }
+  .hero { text-align: center; color: #fff; flex-shrink: 0; }
+  .hero h1 {
+    font-size: 30px; font-weight: 800; letter-spacing: 3px;
+    background: linear-gradient(90deg, #ffffff, #cdeee6);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero p { margin-top: 8px; font-size: 13.5px; color: rgba(255,255,255,.75); letter-spacing: 1px; }
+
+  .app-body {
+    width: 100%; max-width: 900px; flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+    background: #fff; border-radius: 16px;
+    box-shadow: 0 16px 48px rgba(0,0,0,.18);
+    overflow: hidden;
+  }
+
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, var(--teal-deep), var(--teal));
+    color: #fff; font-size: 16px; font-weight: 700; flex-shrink: 0;
+  }
+  .btn-back {
+    background: rgba(255,255,255,.16); border: none; color: #fff;
+    font-size: 13px; padding: 6px 14px; border-radius: 8px; cursor: pointer;
+    transition: background .2s, transform .2s;
+  }
+  .btn-back:hover { background: rgba(255,255,255,.3); transform: translateX(-2px); }
+  .user-chip { font-size: 12px; color: rgba(255,255,255,.75); }
+  .user-chip b { color: #fff; }
+
+  /* 选项卡 */
+  .tabs { display: flex; position: relative; border-bottom: 1px solid var(--border); background: #fff; flex-shrink: 0; }
+  .tab { flex: 1; text-align: center; padding: 13px 0; font-size: 14px; font-weight: 700;
+         color: var(--text-sub); cursor: pointer; transition: color .25s; user-select: none; }
+  .tab.active { color: var(--teal-deep); }
+  .tab-indicator { position: absolute; bottom: 0; left: 0; width: 50%; height: 3px; background: var(--teal);
+                   border-radius: 3px 3px 0 0; transition: transform .3s cubic-bezier(.4,0,.2,1); }
+  .tabs[data-tab="report"] .tab-indicator { transform: translateX(100%); }
+
+  .list-wrap { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 20px; background: var(--bg-soft); }
+  .list { display: none; flex-direction: column; gap: 10px; }
+  .list.show { display: flex; animation: fadein .3s ease; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: none; } }
+
+  .item { border: 1px solid var(--border); border-radius: 12px; background: #fff; transition: box-shadow .2s; }
+  .item:hover { box-shadow: 0 4px 14px rgba(38,51,58,.08); }
+  .item-head { display: flex; align-items: center; gap: 10px; padding: 13px 14px; cursor: pointer; }
+  .item-icon { width: 34px; height: 34px; border-radius: 10px; flex: none; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .icon-chat { background: var(--teal-light); } .icon-rep { background: #f0e9e2; }
+  .item-main { flex: 1; min-width: 0; }
+  .item-title { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-sub { font-size: 12px; color: var(--text-sub); margin-top: 3px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .tag.crit { background: #fdecea; color: var(--danger); font-size: 11px; padding: 1px 8px; border-radius: 999px; font-weight: 700; }
+  .arrow { flex: none; color: var(--text-sub); transition: transform .25s; font-size: 12px; }
+  .item.open .arrow { transform: rotate(90deg); }
+  .btn-del {
+    flex: none; background: none; border: 1px solid #f3c1ba; color: var(--danger); font-size: 12px;
+    border-radius: 7px; padding: 4px 10px; cursor: pointer; transition: background .2s, box-shadow .2s;
+  }
+  .btn-del:hover { background: #fdecea; box-shadow: 0 2px 6px rgba(231,77,60,.18); }
+
+  /* 展开详情 */
+  .detail { max-height: 0; overflow: hidden; transition: max-height .35s ease; }
+  .item.open .detail { max-height: 520px; }
+  .detail-inner { margin: 0 14px 14px; padding: 12px 14px; background: var(--bg-soft); border: 1px dashed var(--border);
+                  border-radius: 10px; font-size: 12.5px; line-height: 1.8; }
+  .detail-inner h5 { font-size: 12.5px; margin: 8px 0 2px; color: var(--teal-deep); }
+  .detail-inner h5:first-child { margin-top: 0; }
+  .qa { margin-bottom: 6px; }
+  .qa .q { color: var(--teal); font-weight: 700; }
+  .abn-line { display: flex; gap: 8px; align-items: baseline; }
+  .abn-line .ref { color: var(--text-sub); }
+  .lab-high { color: var(--danger); font-weight: 700; } .lab-low { color: #e67e22; font-weight: 700; }
+  .note { margin-top: 8px; background: #fff8e6; border: 1px solid #f5d98a; border-radius: 8px;
+          padding: 6px 10px; color: #a0781e; font-size: 11.5px; }
+
+  .empty { text-align: center; color: var(--text-sub); padding: 60px 0; font-size: 14px; display: none; }
+  .empty .big { font-size: 42px; margin-bottom: 12px; opacity: .5; }
+  .empty.show { display: block; }
+
+  /* 分页 */
+  .pager { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 12px;
+           border-top: 1px solid var(--border); flex-shrink: 0; background: #fff; }
+  .pg-btn {
+    background: var(--teal); color: #fff; border: none; border-radius: 8px; padding: 7px 18px;
+    font-size: 13px; font-weight: 700; cursor: pointer; transition: background .2s, box-shadow .2s, opacity .2s;
+  }
+  .pg-btn:hover:not(:disabled) { background: var(--teal-deep); box-shadow: 0 3px 8px rgba(26,122,110,.3); }
+  .pg-btn:disabled { opacity: .35; cursor: not-allowed; }
+  .pg-info { font-size: 13px; color: var(--text-sub); min-width: 70px; text-align: center; }
+
+  .foot { font-size: 12px; color: rgba(255,255,255,.6); flex-shrink: 0; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+  #toast-wrap { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); z-index: 999;
+    display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .toast { padding: 10px 22px; border-radius: 10px; font-size: 13.5px; color: #fff;
+    box-shadow: 0 6px 18px rgba(0,0,0,.18); animation: pop .25s ease; }
+  .toast.error { background: var(--danger);} .toast.ok { background: var(--ok);} .toast.warn { background: var(--warn);}
+  @keyframes pop { from { opacity: 0; transform: translateY(-8px);} to { opacity: 1; transform: none;} }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="hero">
+    <h1>历史记录</h1>
+    <p>查看您的咨询会话与体检报告分析记录</p>
+  </div>
+
+  <div class="app-body">
+    <div class="panel-head">
+      <button class="btn-back" id="btnBack">← 返回主页</button>
+      <span>🗂</span>
+      <span class="user-chip">当前用户：<b>demo_user</b></span>
+    </div>
+
+    <div class="tabs" id="tabs" data-tab="chat">
+      <div class="tab active" data-pane="chat">💬 咨询会话</div>
+      <div class="tab" data-pane="report">📋 报告分析</div>
+      <div class="tab-indicator"></div>
+    </div>
+
+    <div class="list-wrap">
+      <div class="list show" id="list-chat"></div>
+      <div class="list" id="list-report"></div>
+      <div class="empty" id="empty"><div class="big">🗂</div>暂无历史记录</div>
+    </div>
+
+    <div class="pager">
+      <button class="pg-btn" id="btnPrev">« 上一页</button>
+      <span class="pg-info" id="pgInfo">1 / 1</span>
+      <button class="pg-btn" id="btnNext">下一页 »</button>
+    </div>
+  </div>
+
+  <div class="foot">智能问诊系统 v1.0 | 仅供健康咨询使用，不替代专业医疗建议</div>
+</div>
+<div id="toast-wrap"></div>
+
+<script>
+"use strict";
+/* ---------- 模拟数据（时间倒序） ---------- */
+const chatData = [
+  { time: "2026-10-18 15:30", title: "最近老牙龈出血，是怎么回事？", turns: 4,
+    qa: [["我：最近老牙龈出血，是怎么回事？", "AI：可能是牙菌斑牙结石引起的牙龈炎…建议口腔科检查。"],
+         ["我：需要洗牙吗？", "AI：牙结石只能通过洗牙去除，建议到正规口腔科洁治…"]] },
+  { time: "2026-10-17 20:12", title: "失眠有什么改善建议？", turns: 6,
+    qa: [["我：最近总失眠怎么办？", "AI：规律作息、睡前远离电子屏幕、卧室保持安静黑暗…"],
+         ["我：褪黑素能吃吗？", "AI：不建议自行长期服用，请咨询医生后遵医嘱使用。"]] },
+  { time: "2026-10-16 09:45", title: "冬天手脚冰凉正常吗？", turns: 2,
+    qa: [["我：冬天手脚冰凉正常吗？", "AI：多为末梢循环差，注意保暖与运动；伴麻木乏力建议就诊排查。"]] },
+  { time: "2026-10-15 18:03", title: "体检前一天熬夜有影响吗？", turns: 3,
+    qa: [["我：体检前一天熬夜有影响吗？", "AI：可能影响血压、转氨酶等指标，建议体检前保持正常作息。"]] },
+  { time: "2026-10-14 11:20", title: "孩子换牙期要注意什么？", turns: 5,
+    qa: [["我：孩子换牙期注意什么？", "AI：均衡营养、避免舔牙用手摇牙习惯、定期口腔检查…"]] },
+  { time: "2026-10-12 08:40", title: "每天喝多少水比较合适？", turns: 2,
+    qa: [["我：每天喝多少水合适？", "AI：成人每日约1500-1700ml，心肾疾病患者请遵医嘱。"]] },
+];
+const reportData = [
+  { time: "2026-10-18 16:02", file: "real_report.pdf", abnormal: 5, crit: false,
+    brief: "代谢相关异常倾向（血压、血糖、血脂）",
+    items: [["收缩压", "145 mmHg", "90-140 mmHg", "high"], ["空腹血糖", "6.8 mmol/L", "3.9-6.1 mmol/L", "high"],
+            ["HDL胆固醇", "0.9 mmol/L", "1.0-1.7 mmol/L", "low"]] },
+  { time: "2026-10-10 14:26", file: "2026年度体检-张三.pdf", abnormal: 2, crit: true,
+    brief: "检出严重异常指标，建议尽快就医",
+    items: [["肿瘤标志物CEA", "12.4 ng/mL", "0-5 ng/mL", "high"], ["尿酸", "480 μmol/L", "208-428 μmol/L", "high"]] },
+  { time: "2026-09-28 10:15", file: "入职体检报告.pdf", abnormal: 1, crit: false,
+    brief: "轻度血脂异常，其余正常",
+    items: [["甘油三酯", "2.3 mmol/L", "0-1.7 mmol/L", "high"]] },
+  { time: "2026-09-15 09:00", file: "父母体检-矩阵.pdf", abnormal: 3, crit: false,
+    brief: "老年常见指标异常，建议随访",
+    items: [["糖化血红蛋白", "6.4 %", "4.0-6.0 %", "high"], ["血红蛋白", "115 g/L", "130-175 g/L", "low"],
+            ["同型半胱氨酸", "18 μmol/L", "0-15 μmol/L", "high"]] },
+  { time: "2026-08-30 16:40", file: "常规体检2025补档.pdf", abnormal: 4, crit: false,
+    brief: "多项代谢指标偏高，生活方式干预",
+    items: [["BMI", "27.8", "18.5-23.9", "high"], ["ALT", "58 U/L", "9-50 U/L", "high"],
+            ["空腹血糖", "6.5 mmol/L", "3.9-6.1 mmol/L", "high"], ["舒张压", "91 mmHg", "60-90 mmHg", "high"]] },
+];
+
+const PAGE_SIZE = 3;
+const state = { tab: "chat", page: { chat: 1, report: 1 } };
+
+function toast(msg, type) {
+  const t = document.createElement('div');
+  t.className = 'toast ' + (type || 'ok'); t.textContent = msg;
+  document.getElementById('toast-wrap').appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; }, 2400);
+  setTimeout(() => t.remove(), 2800);
+}
+
+/* ---------- Tab 切换 ---------- */
+const tabs = document.getElementById('tabs');
+tabs.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  state.tab = t.dataset.pane;
+  tabs.dataset.tab = state.tab;
+  tabs.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x.dataset.pane === state.tab));
+  render();
+}));
+
+/* ---------- 列表渲染 ---------- */
+function dataOf(tab) { return tab === "chat" ? chatData : reportData; }
+
+function itemHTML(d, i, tab) {
+  if (tab === "chat") {
+    const qa = d.qa.map(([q, a]) => `<div class="qa"><div class="q">${q}</div><div>${a}</div></div>`).join("");
+    return `<div class="item" data-key="${tab}-${i}">
+      <div class="item-head">
+        <div class="item-icon icon-chat">💬</div>
+        <div class="item-main"><div class="item-title">${d.title}</div>
+          <div class="item-sub"><span>${d.time}</span><span>${d.turns} 条消息</span></div></div>
+        <button class="btn-del" data-del="${tab}-${i}">删除</button>
+        <span class="arrow">▶</span>
+      </div>
+      <div class="detail"><div class="detail-inner"><h5>对话摘要</h5>${qa}
+        <div class="note">以上历史建议仅供参考，不构成医疗诊断。</div></div></div>
+    </div>`;
+  }
+  const items = d.items.map(([n, v, r, s]) =>
+    `<div class="abn-line"><span>${n}</span><span>${v}</span><span class="ref">参考 ${r}</span>
+     <span class="${s === 'high' ? 'lab-high' : 'lab-low'}">${s === 'high' ? '⚠️ 偏高' : '⚠️ 偏低'}</span></div>`).join("");
+  return `<div class="item" data-key="${tab}-${i}">
+    <div class="item-head">
+      <div class="item-icon icon-rep">📋</div>
+      <div class="item-main"><div class="item-title">${d.file}${d.crit ? ' <span class="tag crit">🚨 建议尽快就医</span>' : ''}</div>
+        <div class="item-sub"><span>${d.time}</span><span>${d.abnormal} 项异常</span><span>${d.brief}</span></div></div>
+      <button class="btn-del" data-del="${tab}-${i}">删除</button>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="detail"><div class="detail-inner"><h5>异常项明细</h5>${items}
+      <h5>总体健康建议</h5>${d.brief}；建议 1-3 个月内针对性复查。
+      <div class="note">本分析仅供参考，不替代专业医疗建议，请以医生诊断为准。</div></div></div>
+  </div>`;
+}
+
+function render() {
+  const tab = state.tab;
+  const data = dataOf(tab);
+  const totalPages = Math.max(1, Math.ceil(data.length / PAGE_SIZE));
+  if (state.page[tab] > totalPages) state.page[tab] = totalPages;
+  const p = state.page[tab];
+  const slice = data.slice((p - 1) * PAGE_SIZE, p * PAGE_SIZE);
+
+  ["chat", "report"].forEach(t => {
+    const box = document.getElementById("list-" + t);
+    box.classList.toggle("show", t === tab);
+    box.innerHTML = t === tab ? slice.map((d, i) => itemHTML(d, (p - 1) * PAGE_SIZE + i, t)).join("") : "";
+  });
+
+  document.getElementById("empty").classList.toggle("show", data.length === 0);
+
+  const btnPrev = document.getElementById("btnPrev"), btnNext = document.getElementById("btnNext");
+  btnPrev.disabled = p <= 1;
+  btnNext.disabled = p >= totalPages;
+  document.getElementById("pgInfo").textContent = data.length ? `${p} / ${totalPages}` : `0 / 0`;
+}
+
+/* ---------- 展开/收起 + 删除（二次确认） ---------- */
+document.querySelector(".list-wrap").addEventListener("click", e => {
+  const del = e.target.closest("[data-del]");
+  if (del) {
+    if (!confirm("确定要删除该条历史记录吗？删除后不可恢复。")) return;
+    const arr = state.tab === "chat" ? chatData : reportData;
+    arr.splice(Number(del.dataset.del.split("-")[1]), 1);
+    render();
+    toast("记录已删除");
+    return;
+  }
+  const head = e.target.closest(".item-head");
+  if (head) head.parentElement.classList.toggle("open");
+});
+
+/* ---------- 分页 ---------- */
+document.getElementById("btnPrev").addEventListener("click", () => {
+  if (state.page[state.tab] > 1) { state.page[state.tab]--; render(); }
+});
+document.getElementById("btnNext").addEventListener("click", () => {
+  const tp = Math.ceil(dataOf(state.tab).length / PAGE_SIZE);
+  if (state.page[state.tab] < tp) { state.page[state.tab]++; render(); }
+});
+document.getElementById("btnBack").addEventListener("click", () => toast("已返回主页面（原型模拟）"));
+
+render();
+</script>
+</body>
+</html>

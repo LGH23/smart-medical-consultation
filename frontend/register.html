@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>智能问诊系统 - 注册</title>
+<style>
+  :root {
+    --teal: #1a7a6e; --teal-deep: #0d6e63;
+    --danger: #e74c3c; --ok: #2e9e6b; --warn: #e6a23c;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+    min-height: 100vh;
+    background: linear-gradient(140deg, #0d6e63 0%, #1a7a6e 45%, #0a5a51 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 30px 16px;
+  }
+  .head { text-align: center; color: #fff; margin-bottom: 26px; }
+  .head h1 { font-size: 28px; letter-spacing: 3px; }
+  .head p { font-size: 14px; opacity: .82; margin-top: 8px; letter-spacing: 2px; }
+
+  .card {
+    width: 100%; max-width: 400px;
+    background: rgba(255, 255, 255, .10);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 16px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, .25);
+    padding: 30px 28px 24px;
+  }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; color: rgba(255,255,255,.85); font-size: 13px; margin-bottom: 7px; }
+  .field input {
+    width: 100%; padding: 11px 13px; font-size: 14px; color: #fff;
+    background: rgba(0, 0, 0, .30);
+    border: 1px solid rgba(255,255,255,.22); border-radius: 9px; outline: none;
+    transition: border-color .2s, box-shadow .2s, background .2s;
+  }
+  .field input::placeholder { color: rgba(255,255,255,.42); }
+  .field input:focus { border-color: #7fe3d2; background: rgba(0,0,0,.38); box-shadow: 0 0 0 3px rgba(127,227,210,.18); }
+  .field input.invalid { border-color: #ff8d80; box-shadow: 0 0 0 3px rgba(231,77,60,.18); }
+  .err { display: none; color: #ffb4ab; font-size: 12px; margin-top: 6px; }
+  .err.show { display: block; }
+
+  .btn {
+    width: 100%; padding: 12px 0; border: none; border-radius: 10px;
+    background: linear-gradient(135deg, #2ea08f, #1a7a6e); color: #fff;
+    font-size: 15px; font-weight: 700; letter-spacing: 2px; cursor: pointer;
+    transition: filter .2s, box-shadow .2s, opacity .2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px;
+  }
+  .btn:hover:not(:disabled) { filter: brightness(1.12); box-shadow: 0 6px 16px rgba(0,0,0,.28); }
+  .btn:disabled { opacity: .65; cursor: not-allowed; }
+  .spin {
+    display: none; width: 15px; height: 15px; border: 2.5px solid rgba(255,255,255,.4);
+    border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite;
+  }
+  .btn.loading .spin { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .switch-line { text-align: center; margin-top: 16px; font-size: 13px; color: rgba(255,255,255,.65); }
+  .switch-line a { color: #7fe3d2; font-weight: 700; cursor: pointer; text-decoration: none; }
+  .switch-line a:hover { text-decoration: underline; }
+  .footer { margin-top: 22px; color: rgba(255,255,255,.55); font-size: 12px; }
+
+  #toast-wrap { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); z-index: 999;
+    display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .toast { padding: 11px 24px; border-radius: 10px; font-size: 14px; color: #fff;
+    box-shadow: 0 6px 18px rgba(0,0,0,.3); animation: pop .25s ease; }
+  .toast.error { background: var(--danger); } .toast.ok { background: var(--ok); } .toast.warn { background: var(--warn); }
+  @keyframes pop { from { opacity: 0; transform: translateY(-8px);} to { opacity: 1; transform: none;} }
+</style>
+</head>
+<body>
+
+  <div class="head">
+    <h1>智能问诊系统</h1>
+    <p>注册</p>
+  </div>
+
+  <div class="card">
+    <div class="field">
+      <label>用户名</label>
+      <input id="regUser" placeholder="3-20位字母、数字或下划线" autocomplete="off">
+      <div class="err" id="regUserErr"></div>
+    </div>
+    <div class="field">
+      <label>邮箱</label>
+      <input id="regEmail" placeholder="example@mail.com" autocomplete="off">
+      <div class="err" id="regEmailErr"></div>
+    </div>
+    <div class="field">
+      <label>密码</label>
+      <input id="regPass" type="password" placeholder="6-20个字符" autocomplete="off">
+      <div class="err" id="regPassErr"></div>
+    </div>
+    <div class="field">
+      <label>确认密码</label>
+      <input id="regPass2" type="password" placeholder="再次输入密码" autocomplete="off">
+      <div class="err" id="regPass2Err"></div>
+    </div>
+    <button class="btn" id="btnReg"><span class="spin"></span><span>注 册</span></button>
+    <div class="switch-line">已有账号？<a id="gotoLogin">去登录</a></div>
+  </div>
+
+  <div class="footer">智能问诊系统 v1.0 | 仅供健康咨询使用，不替代专业医疗建议</div>
+  <div id="toast-wrap"></div>
+
+<script>
+"use strict";
+/* ===== V2.0：注册对接后端 A1（API设计文档 2.2，错误码 4401~4406）=====
+ * 前端格式校验即时反馈，唯一性（用户名/邮箱）由后端判定，两侧文案一致 */
+const API_BASE = "http://127.0.0.1:8000";
+
+function toast(msg, type) {
+  const t = document.createElement('div');
+  t.className = 'toast ' + (type || 'ok'); t.textContent = msg;
+  document.getElementById('toast-wrap').appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; }, 2200);
+  setTimeout(() => t.remove(), 2600);
+}
+
+document.getElementById('gotoLogin').addEventListener('click', () => location.href = 'login.html');
+
+function setErr(inputId, errId, msg) {
+  const input = document.getElementById(inputId), err = document.getElementById(errId);
+  if (msg) { input.classList.add('invalid'); err.textContent = msg; err.classList.add('show'); return false; }
+  input.classList.remove('invalid'); err.classList.remove('show'); return true;
+}
+
+const RE_USER  = /^[A-Za-z0-9_]{3,20}$/;
+const RE_EMAIL = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
+function validate() {
+  const u = document.getElementById('regUser').value.trim();
+  const e = document.getElementById('regEmail').value.trim();
+  const p = document.getElementById('regPass').value;
+  const p2 = document.getElementById('regPass2').value;
+  let ok = true;
+  ok = setErr('regUser', 'regUserErr', !u ? '请输入用户名'
+      : (!RE_USER.test(u) ? '用户名需为 3-20 位字母、数字或下划线' : '')) && ok;
+  ok = setErr('regEmail', 'regEmailErr', !e ? '请输入邮箱'
+      : (RE_EMAIL.test(e) ? '' : '邮箱格式不正确，请重新输入')) && ok;
+  ok = setErr('regPass', 'regPassErr', !p ? '请输入密码'
+      : ((p.length >= 6 && p.length <= 20) ? '' : '密码需为 6-20 个字符')) && ok;
+  ok = setErr('regPass2', 'regPass2Err', !p2 ? '请再次输入密码'
+      : (p2 !== p ? '密码不一致，请重新输入'
+      : ((p2.length >= 6 && p2.length <= 20) ? '' : '确认密码需为 6-20 个字符'))) && ok;
+  return ok;
+}
+
+document.getElementById('btnReg').addEventListener('click', async () => {
+  if (!validate()) return;                                  // 本地格式校验先行（即时反馈）
+  const u = document.getElementById('regUser').value.trim();
+  const e = document.getElementById('regEmail').value.trim();
+  const p = document.getElementById('regPass').value;
+
+  const btn = document.getElementById('btnReg');
+  btn.classList.add('loading'); btn.disabled = true;
+  try {
+    const resp = await fetch(API_BASE + '/api/register', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, email: e, password: p, confirm_password: p }),
+    });
+    const body = await resp.json();
+    if (body.code !== 0) throw body;                        // {code, message} 后端校验结果
+    toast('注册成功，正在跳转登录页…', 'ok');
+    setTimeout(() => location.href = 'login.html', 800);    // 注册成功 → 登录页（FR-15）
+  } catch (err_) {
+    if (err_ && err_.code) {                                // 后端错误映射到对应字段（文案一致）
+      if (err_.code === 4401) setErr('regUser', 'regUserErr', err_.message);
+      else if (err_.code === 4402) setErr('regEmail', 'regEmailErr', err_.message);
+      else if (err_.code === 4403) setErr('regUser', 'regUserErr', err_.message);
+      else if (err_.code === 4404) setErr('regEmail', 'regEmailErr', err_.message);
+      else if (err_.code === 4405) setErr('regPass', 'regPassErr', err_.message);
+      else if (err_.code === 4406) setErr('regPass2', 'regPass2Err', err_.message);
+      toast(err_.message, 'error');
+    } else {
+      toast('服务暂时不可用，请稍后重试', 'error');           // 网络异常/后端未启动
+    }
+  } finally {
+    btn.classList.remove('loading'); btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+# 密钥与环境文件（严禁提交真实 API Key）
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# 本地数据库与临时上传文件
+*.db
+backend/uploads_tmp/
+
+# 工具缓存目录
+.workbuddy/

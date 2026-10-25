@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>智能问诊系统 - 登录/注册（原型）</title>
+<style>
+  :root {
+    --teal: #1a7a6e; --teal-deep: #0d6e63; --purple: #6c5ce7;
+    --danger: #e74c3c; --ok: #27ae60; --warn: #e6a23c;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+    min-height: 100vh;
+    background: linear-gradient(140deg, #0d6e63 0%, #1a7a6e 45%, #0a5a51 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 30px 16px;
+  }
+  /* 顶部标题区 */
+  .head { text-align: center; color: #fff; margin-bottom: 26px; }
+  .head h1 { font-size: 28px; letter-spacing: 3px; }
+  .head p { font-size: 14px; opacity: .82; margin-top: 8px; letter-spacing: 2px; }
+
+  /* 卡片：深色半透明毛玻璃 */
+  .card {
+    width: 100%; max-width: 400px;
+    background: rgba(255, 255, 255, .10);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 16px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, .25);
+    overflow: hidden;
+  }
+
+  /* 选项卡 */
+  .tabs { display: flex; position: relative; background: rgba(0,0,0,.18); }
+  .tab {
+    flex: 1; text-align: center; padding: 14px 0; font-size: 15px; font-weight: 700;
+    color: rgba(255,255,255,.6); cursor: pointer; transition: color .25s; user-select: none;
+  }
+  .tab.active { color: #fff; }
+  .tab-indicator {
+    position: absolute; bottom: 0; left: 0; width: 50%; height: 3px;
+    background: #7fe3d2; border-radius: 3px 3px 0 0;
+    transition: transform .3s cubic-bezier(.4, 0, .2, 1);
+  }
+  .tabs[data-tab="register"] .tab-indicator { transform: translateX(100%); }
+
+  /* 表单滑动容器 */
+  .panes { display: flex; transition: transform .35s cubic-bezier(.4, 0, .2, 1); }
+  .pane { flex: 0 0 100%; padding: 26px 28px 22px; }
+
+  .field { margin-bottom: 18px; }
+  .field label { display: block; color: rgba(255,255,255,.85); font-size: 13px; margin-bottom: 7px; }
+  /* 深色半透明输入框（与主页面青绿体系一致的深底） */
+  .field input {
+    width: 100%; padding: 11px 13px; font-size: 14px; color: #fff;
+    background: rgba(0, 0, 0, .30);
+    border: 1px solid rgba(255,255,255,.22); border-radius: 9px; outline: none;
+    transition: border-color .2s, box-shadow .2s, background .2s;
+  }
+  .field input::placeholder { color: rgba(255,255,255,.42); }
+  .field input:focus { border-color: #7fe3d2; background: rgba(0,0,0,.38); box-shadow: 0 0 0 3px rgba(127,227,210,.18); }
+  .field input.invalid { border-color: #ff8d80; box-shadow: 0 0 0 3px rgba(231,77,60,.18); }
+  .err { display: none; color: #ffb4ab; font-size: 12px; margin-top: 6px; }
+  .err.show { display: block; }
+
+  .btn {
+    width: 100%; padding: 12px 0; border: none; border-radius: 10px;
+    background: linear-gradient(135deg, #2ea08f, #1a7a6e); color: #fff;
+    font-size: 15px; font-weight: 700; letter-spacing: 2px; cursor: pointer;
+    transition: filter .2s, box-shadow .2s, opacity .2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px;
+  }
+  .btn:hover:not(:disabled) { filter: brightness(1.12); box-shadow: 0 6px 16px rgba(0,0,0,.28); }
+  .btn:disabled { opacity: .65; cursor: not-allowed; }
+  .spin {
+    display: none; width: 15px; height: 15px; border: 2.5px solid rgba(255,255,255,.4);
+    border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite;
+  }
+  .btn.loading .spin { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .switch-line { text-align: center; margin-top: 16px; font-size: 13px; color: rgba(255,255,255,.65); }
+  .switch-line a { color: #7fe3d2; font-weight: 700; cursor: pointer; text-decoration: none; }
+  .switch-line a:hover { text-decoration: underline; }
+
+  .footer { margin-top: 22px; color: rgba(255,255,255,.55); font-size: 12px; }
+
+  /* Toast */
+  #toast-wrap { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); z-index: 999;
+    display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .toast { padding: 11px 24px; border-radius: 10px; font-size: 14px; color: #fff;
+    box-shadow: 0 6px 18px rgba(0,0,0,.3); animation: pop .25s ease; }
+  .toast.error { background: var(--danger); } .toast.warn { background: var(--warn); } .toast.ok { background: var(--ok); }
+  @keyframes pop { from { opacity: 0; transform: translateY(-8px);} to { opacity: 1; transform: none;} }
+</style>
+</head>
+<body>
+
+  <div class="head">
+    <h1>智能问诊系统</h1>
+    <p>登录 / 注册</p>
+  </div>
+
+  <div class="card">
+    <div class="tabs" id="tabs" data-tab="login">
+      <div class="tab active" data-pane="login">登 录</div>
+      <div class="tab" data-pane="register">注 册</div>
+      <div class="tab-indicator"></div>
+    </div>
+
+    <div class="panes" id="panes">
+      <!-- 登录 -->
+      <div class="pane">
+        <div class="field">
+          <label>用户名</label>
+          <input id="loginUser" placeholder="请输入用户名" autocomplete="off">
+          <div class="err" id="loginUserErr">请输入用户名</div>
+        </div>
+        <div class="field">
+          <label>密码</label>
+          <input id="loginPass" type="password" placeholder="请输入密码" autocomplete="off">
+          <div class="err" id="loginPassErr">请输入密码</div>
+        </div>
+        <button class="btn" id="btnLogin"><span class="spin"></span><span>登 录</span></button>
+        <div class="switch-line">没有账号？<a data-goto="register">去注册</a></div>
+      </div>
+
+      <!-- 注册 -->
+      <div class="pane">
+        <div class="field">
+          <label>用户名</label>
+          <input id="regUser" placeholder="3-20位字母、数字或下划线" autocomplete="off">
+          <div class="err" id="regUserErr"></div>
+        </div>
+        <div class="field">
+          <label>邮箱</label>
+          <input id="regEmail" placeholder="example@mail.com" autocomplete="off">
+          <div class="err" id="regEmailErr"></div>
+        </div>
+        <div class="field">
+          <label>密码</label>
+          <input id="regPass" type="password" placeholder="6-20个字符" autocomplete="off">
+          <div class="err" id="regPassErr"></div>
+        </div>
+        <div class="field">
+          <label>确认密码</label>
+          <input id="regPass2" type="password" placeholder="再次输入密码" autocomplete="off">
+          <div class="err" id="regPass2Err"></div>
+        </div>
+        <button class="btn" id="btnReg"><span class="spin"></span><span>注 册</span></button>
+        <div class="switch-line">已有账号？<a data-goto="login">去登录</a></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">智能问诊系统 v1.0 | 仅供健康咨询使用，不替代专业医疗建议</div>
+  <div id="toast-wrap"></div>
+
+<script>
+"use strict";
+function toast(msg, type) {
+  const t = document.createElement('div');
+  t.className = 'toast ' + (type || 'ok');
+  t.textContent = msg;
+  document.getElementById('toast-wrap').appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; }, 2400);
+  setTimeout(() => t.remove(), 2800);
+}
+
+/* ---------- 选项卡切换（平滑过渡） ---------- */
+const tabs = document.getElementById('tabs');
+const panes = document.getElementById('panes');
+function switchTab(name) {
+  tabs.dataset.tab = name;
+  panes.style.transform = name === 'register' ? 'translateX(-100%)' : 'translateX(0)';
+  tabs.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.pane === name));
+}
+tabs.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.pane)));
+document.querySelectorAll('.switch-line a').forEach(a => a.addEventListener('click', () => switchTab(a.dataset.goto)));
+
+/* ---------- 表单校验工具 ---------- */
+function setErr(inputId, errId, msg) {
+  const input = document.getElementById(inputId), err = document.getElementById(errId);
+  if (msg) { input.classList.add('invalid'); err.textContent = msg; err.classList.add('show'); return false; }
+  input.classList.remove('invalid'); err.classList.remove('show'); return true;
+}
+
+const RE_USER  = /^[A-Za-z0-9_]{3,20}$/;
+const RE_EMAIL = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
+function validateLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  let ok = setErr('loginUser', 'loginUserErr', u ? '' : '请输入用户名');
+  ok = setErr('loginPass', 'loginPassErr', p ? '' : '请输入密码') && ok;
+  return ok;
+}
+
+function validateRegister() {
+  const u = document.getElementById('regUser').value.trim();
+  const e = document.getElementById('regEmail').value.trim();
+  const p = document.getElementById('regPass').value;
+  const p2 = document.getElementById('regPass2').value;
+  let ok = true;
+  if (!u) ok = setErr('regUser', 'regUserErr', '请输入用户名') && ok;
+  else if (!RE_USER.test(u)) ok = setErr('regUser', 'regUserErr', '用户名需为 3-20 位字母、数字或下划线') && ok;
+  else ok = setErr('regUser', 'regUserErr', '') && ok;
+
+  ok = setErr('regEmail', 'regEmailErr', !e ? '请输入邮箱'
+      : (RE_EMAIL.test(e) ? '' : '邮箱格式不正确，请重新输入')) && ok;
+  ok = setErr('regPass',  'regPassErr',  !p ? '请输入密码'
+      : ((p.length >= 6 && p.length <= 20) ? '' : '密码需为 6-20 个字符')) && ok;
+  ok = setErr('regPass2', 'regPass2Err',
+        !p2 ? '请再次输入密码'
+      : (p2 !== p ? '密码不一致，请重新输入'
+      : !(p2.length >= 6 && p2.length <= 20) ? '确认密码需为 6-20 个字符' : '')) && ok;
+  return ok;
+}
+
+/* ---------- 模拟提交（加载动画反馈） ---------- */
+function mockSubmit(btn, ms, onDone) {
+  btn.classList.add('loading'); btn.disabled = true;
+  setTimeout(() => { btn.classList.remove('loading'); btn.disabled = false; onDone(); }, ms);
+}
+
+document.getElementById('btnLogin').addEventListener('click', () => {
+  if (!validateLogin()) return;
+  mockSubmit(document.getElementById('btnLogin'), 1200, () => {
+    toast('登录成功，正在跳转主页面…（原型模拟）');   // 正式版此处跳 index.html
+  });
+});
+
+/* 模拟数据：注册重名/重邮箱的既有账号（演示异常文案） */
+const EXIST_USERS = new Set(['admin', 'zhangsan']);
+const EXIST_EMAILS = new Set(['admin@mail.com']);
+
+document.getElementById('btnReg').addEventListener('click', () => {
+  if (!validateRegister()) return;
+  const u = document.getElementById('regUser').value.trim();
+  const e = document.getElementById('regEmail').value.trim();
+  mockSubmit(document.getElementById('btnReg'), 1400, () => {
+    if (EXIST_USERS.has(u))       { setErr('regUser', 'regUserErr', '用户名已存在'); toast('用户名已存在', 'error'); return; }
+    if (EXIST_EMAILS.has(e))      { setErr('regEmail', 'regEmailErr', '邮箱已被注册'); toast('邮箱已被注册', 'error'); return; }
+    toast('注册成功，正在跳转登录页…（原型模拟）');
+    setTimeout(() => { switchTab('login'); clearRegister(); }, 900);   // 需求：成功跳登录
+  });
+});
+
+function clearRegister() {
+  ['regUser','regEmail','regPass','regPass2'].forEach(id => {
+    document.getElementById(id).value = '';
+    document.getElementById(id).classList.remove('invalid');
+  });
+  ['regUserErr','regEmailErr','regPassErr','regPass2Err'].forEach(id =>
+    document.getElementById(id).classList.remove('show'));
+}
+</script>
+</body>
+</html>

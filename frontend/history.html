@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>智能问诊系统 - 历史记录</title>
+<style>
+  :root {
+    --teal: #1a7a6e; --teal-deep: #0d6e63; --teal-light: #eef7f6;
+    --purple: #6c5ce7; --bg: #f7f9f8; --border: #e4e9e8;
+    --danger: #e74c3c; --ok: #2e9e6b; --warn: #e6a23c;
+    --text: #26333a; --text-sub: #7f8b90;
+    --warn-bg: #fff8e6; --warn-border: #f5d98a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body { font-family: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+         background: linear-gradient(180deg, #0d6e63 0%, #1a7a6e 60%, #2d8b7e 100%); color: var(--text); }
+  .app { max-width: 960px; margin: 0 auto; padding: 18px 16px 8px; display: flex; flex-direction: column;
+         height: 100vh; height: 100dvh; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; margin-bottom: 14px; color: #fff; }
+  .btn-back { background: rgba(255,255,255,.16); border: none; color: #fff; font-size: 13px;
+              padding: 7px 15px; border-radius: 8px; cursor: pointer; transition: background .2s, transform .2s; }
+  .btn-back:hover { background: rgba(255,255,255,.3); transform: translateX(-2px); }
+  .topbar h1 { font-size: 19px; font-weight: 800; letter-spacing: 2px; }
+  .user-chip { font-size: 12.5px; color: rgba(255,255,255,.75); }
+  .user-chip b { color: #fff; }
+
+  .card { background: #fff; border-radius: 16px; box-shadow: 0 16px 48px rgba(0,0,0,.18);
+          display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+
+  .tabs { display: flex; position: relative; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .tab { flex: 1; text-align: center; padding: 14px 0; font-size: 14.5px; font-weight: 700;
+         color: var(--text-sub); cursor: pointer; transition: color .25s; user-select: none; }
+  .tab.active { color: var(--teal-deep); }
+  .tab-indicator { position: absolute; bottom: 0; left: 0; width: 50%; height: 3px; background: var(--teal);
+                   border-radius: 3px 3px 0 0; transition: transform .3s cubic-bezier(.4,0,.2,1); }
+  .tabs[data-tab="report"] .tab-indicator { transform: translateX(100%); }
+  .tabs[data-tab="report"] .tab.active { color: var(--purple); }
+
+  .list-wrap { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 20px; background: var(--bg); }
+  .list { display: flex; flex-direction: column; gap: 10px; animation: fadein .3s ease; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: none; } }
+
+  .item { border: 1px solid var(--border); border-radius: 12px; background: #fff; cursor: pointer;
+          transition: box-shadow .2s, transform .2s; display: flex; align-items: center; gap: 10px; padding: 13px 14px; }
+  .item:hover { box-shadow: 0 4px 14px rgba(38,51,58,.10); transform: translateY(-1px); }
+  .item-icon { width: 34px; height: 34px; border-radius: 10px; flex: none; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .icon-chat { background: var(--teal-light); } .icon-rep { background: #efecfd; }
+  .item-main { flex: 1; min-width: 0; }
+  .item-title { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-sub { font-size: 12px; color: var(--text-sub); margin-top: 3px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .tag { font-size: 11px; padding: 1px 8px; border-radius: 999px; font-weight: 700; }
+  .tag.crit { background: #fdecea; color: var(--danger); }
+  .tag.abn  { background: #efecfd; color: var(--purple); }
+  .btn-del { flex: none; background: none; border: 1px solid #f3c1ba; color: var(--danger); font-size: 12px;
+             border-radius: 7px; padding: 4px 10px; cursor: pointer; transition: background .2s, box-shadow .2s; }
+  .btn-del:hover { background: #fdecea; box-shadow: 0 2px 6px rgba(231,77,60,.18); }
+
+  .empty { text-align: center; color: var(--text-sub); padding: 60px 0; font-size: 14px; display: none; }
+  .empty .big { font-size: 42px; margin-bottom: 12px; opacity: .5; }
+  .empty.show { display: block; }
+  .loading-line { text-align: center; color: var(--text-sub); padding: 50px 0; font-size: 13.5px; }
+
+  .pager { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 12px;
+           border-top: 1px solid var(--border); flex-shrink: 0; background: #fff; }
+  .pg-btn { background: var(--teal); color: #fff; border: none; border-radius: 8px; padding: 7px 18px;
+            font-size: 13px; font-weight: 700; cursor: pointer; transition: background .2s, box-shadow .2s, opacity .2s; }
+  .pg-btn:hover:not(:disabled) { background: var(--teal-deep); box-shadow: 0 3px 8px rgba(26,122,110,.3); }
+  .pg-btn:disabled { opacity: .35; cursor: not-allowed; }
+  .pg-info { font-size: 13px; color: var(--text-sub); min-width: 80px; text-align: center; }
+
+  /* ===== 详情视图 ===== */
+  .detail-view { display: none; flex-direction: column; flex: 1; min-height: 0; }
+  .detail-head { display: flex; align-items: center; gap: 12px; padding: 13px 18px; flex-shrink: 0;
+                 background: linear-gradient(135deg, var(--teal-deep), var(--teal)); color: #fff; }
+  .detail-head.report { background: linear-gradient(135deg, #5a4bd1, var(--purple)); }
+  .detail-head .title { flex: 1; font-size: 14.5px; font-weight: 700; min-width: 0;
+                        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .btn-back2 { background: rgba(255,255,255,.18); border: none; color: #fff; font-size: 12.5px;
+               padding: 6px 13px; border-radius: 8px; cursor: pointer; transition: background .2s; flex-shrink: 0; }
+  .btn-back2:hover { background: rgba(255,255,255,.32); }
+  .btn-dl2 { background: #fff; color: var(--purple); border: none; font-size: 12.5px; padding: 6px 13px;
+             border-radius: 8px; cursor: pointer; font-weight: 700; transition: box-shadow .2s; flex-shrink: 0; }
+  .btn-dl2:hover { box-shadow: 0 3px 8px rgba(0,0,0,.2); }
+  .detail-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 18px; background: var(--bg); }
+
+  /* 对话回看 */
+  .msg { display: flex; margin-bottom: 14px; }
+  .msg.user { justify-content: flex-end; }
+  .avatar { width: 30px; height: 30px; border-radius: 50%; flex: none; margin-right: 9px;
+            background: var(--teal-light); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .bubble-ai { background: #fff; border: 1px solid var(--border); border-radius: 4px 12px 12px 12px;
+               padding: 10px 13px; max-width: 80%; font-size: 13.5px; line-height: 1.7; }
+  .bubble-user { background: var(--teal); color: #fff; border-radius: 12px 4px 12px 12px; padding: 9px 13px;
+                 max-width: 70%; font-size: 13.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+  .md-block p { margin: 3px 0; }
+  .md-h { font-weight: 700; color: var(--teal-deep); margin: 8px 0 3px; font-size: 13.5px; }
+  .md-block ul { margin: 3px 0 5px; padding-left: 2px; list-style: none; }
+  .md-block li { padding-left: 15px; position: relative; margin: 2px 0; }
+  .md-block li::before { content: "●"; color: var(--teal); position: absolute; left: 2px; font-size: 9px; top: 4px; }
+
+  /* 报告四段式 */
+  .result h4 { font-size: 13.5px; color: var(--purple); margin: 14px 0 6px; }
+  .result h4:first-child { margin-top: 0; }
+  .base-info { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 12.5px;
+               background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .base-info b { color: var(--text-sub); font-weight: 600; }
+  .abn-item { border: 1px solid var(--border); background: #fff; border-radius: 10px; padding: 10px 12px;
+              font-size: 12.5px; margin-bottom: 8px; }
+  .abn-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .abn-name { font-weight: 700; font-size: 13px; }
+  .tag.high { background: #fdecea; color: var(--danger); }
+  .tag.low  { background: #fff3e0; color: #e67e22; }
+  .abn-vals { color: var(--text-sub); margin-top: 4px; }
+  .abn-adv { margin-top: 5px; line-height: 1.6; }
+  .abn-adv::before { content: "改进方案："; color: var(--purple); font-weight: 700; }
+  .result .para { font-size: 12.5px; line-height: 1.7; background: #fff; border: 1px solid var(--border);
+                  border-radius: 10px; padding: 10px 12px; }
+  .warn-note { background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: 8px;
+               padding: 8px 10px; font-size: 12px; color: #a0781e; line-height: 1.6; margin-top: 6px; }
+  .critical-bar { background: #fdecea; border: 1.5px solid var(--danger); color: var(--danger);
+                  border-radius: 10px; padding: 10px 12px; font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+
+  .foot { text-align: center; color: rgba(255,255,255,.6); font-size: 12px; padding: 10px 0 4px; flex-shrink: 0; }
+
+  #toast-wrap { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); z-index: 999;
+                display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .toast { padding: 10px 22px; border-radius: 10px; font-size: 13.5px; color: #fff;
+           box-shadow: 0 6px 18px rgba(0,0,0,.25); animation: pop .25s ease; max-width: 520px; }
+  .toast.error { background: var(--danger);} .toast.ok { background: var(--ok);} .toast.warn { background: var(--warn);}
+  @keyframes pop { from { opacity: 0; transform: translateY(-8px);} to { opacity: 1; transform: none;} }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <button class="btn-back" id="btnHome">← 返回主页</button>
+    <h1>历史记录</h1>
+    <span class="user-chip">👤 <b id="curUser">--</b></span>
+  </div>
+
+  <!-- 列表视图 -->
+  <div class="card" id="listView">
+    <div class="tabs" id="tabs" data-tab="chat">
+      <div class="tab active" data-pane="chat">💬 咨询会话</div>
+      <div class="tab" data-pane="report">📋 报告分析</div>
+      <div class="tab-indicator"></div>
+    </div>
+    <div class="list-wrap">
+      <div class="list" id="listBox"><div class="loading-line">加载中…</div></div>
+      <div class="empty" id="empty"><div class="big">🗂</div>暂无历史记录</div>
+    </div>
+    <div class="pager">
+      <button class="pg-btn" id="btnPrev">« 上一页</button>
+      <span class="pg-info" id="pgInfo">- / -</span>
+      <button class="pg-btn" id="btnNext">下一页 »</button>
+    </div>
+  </div>
+
+  <!-- 详情视图 -->
+  <div class="card detail-view" id="detailView">
+    <div class="detail-head" id="detailHead">
+      <button class="btn-back2" id="btnBackList">← 返回列表</button>
+      <span class="title" id="detailTitle"></span>
+      <button class="btn-dl2" id="btnDl" style="display:none">⬇ 下载报告</button>
+    </div>
+    <div class="detail-body" id="detailBody"></div>
+  </div>
+
+  <div class="foot">智能问诊系统 v1.0 | 仅供健康咨询使用，不替代专业医疗建议</div>
+</div>
+<div id="toast-wrap"></div>
+
+<script>
+"use strict";
+/* ==================== 登录守卫（与主页面同口径） ==================== */
+let auth = null;
+try { auth = JSON.parse(localStorage.getItem('clinic_auth') || 'null'); } catch (e) {}
+if (!auth || !auth.username || !localStorage.getItem('clinic_token')) location.replace('login.html');
+document.getElementById('curUser').textContent = (auth && auth.username) || '--';
+document.getElementById('btnHome').addEventListener('click', () => location.href = 'index.html');
+
+/* ==================== 后端 API（V2.0：X-Token 鉴权，user_id 归属由后端解析） ==================== */
+const API_BASE = "http://127.0.0.1:8000";
+const TOKEN = localStorage.getItem("clinic_token") || "";
+
+function toast(msg, type) {
+  const t = document.createElement('div');
+  t.className = 'toast ' + (type || 'ok'); t.textContent = msg;
+  document.getElementById('toast-wrap').appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; }, 2600);
+  setTimeout(() => t.remove(), 3000);
+}
+
+async function api(path, options = {}) {
+  let resp;
+  try {
+    resp = await fetch(API_BASE + path, { ...options,
+      headers: { 'X-Token': TOKEN, ...(options.headers || {}) } });
+  } catch (e) {
+    throw { message: '服务暂时不可用，请稍后重试' };   // 后端未启动等网络异常
+  }
+  const ct = resp.headers.get('content-type') || '';
+  if (!ct.includes('application/json')) throw { message: '系统繁忙，请稍后重试' };
+  const body = await resp.json();
+  if (body.code === 4411) {                            // 登录态失效：清凭证回登录页（API文档 1.3）
+    localStorage.removeItem('clinic_auth'); localStorage.removeItem('clinic_token');
+    location.replace('login.html');
+    throw { code: 4411, message: body.message };
+  }
+  if (body.code !== 0) throw { code: body.code, message: body.message };
+  return body.data;
+}
+
+/* 行式 Markdown 渲染（与主页面一致） */
+function renderMarkdown(text) {
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const inline = s => esc(s).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  let html = '', inList = false;
+  for (const line of String(text || '').split('\n')) {
+    if (/^###\s+/.test(line)) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += '<div class="md-h">' + inline(line.replace(/^###\s+/, '')) + '</div>';
+    } else if (/^[-•●]\s*/.test(line)) {
+      if (!inList) { html += '<ul>'; inList = true; }
+      html += '<li>' + inline(line.replace(/^[-•●]\s*/, '')) + '</li>';
+    } else if (line.trim() === '') {
+      if (inList) { html += '</ul>'; inList = false; }
+    } else {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += '<p>' + inline(line) + '</p>';
+    }
+  }
+  if (inList) html += '</ul>';
+  return html;
+}
+
+/* ==================== 列表（后端分页 page/size） ==================== */
+const PAGE_SIZE = 5;
+const state = { tab: 'chat', page: { chat: 1, report: 1 }, total: { chat: 0, report: 0 } };
+
+const tabs = document.getElementById('tabs');
+tabs.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  state.tab = t.dataset.pane;
+  tabs.dataset.tab = state.tab;
+  tabs.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === t));
+  loadList();
+}));
+
+async function loadList() {
+  const tab = state.tab;
+  const listBox = document.getElementById('listBox');
+  document.getElementById('empty').classList.remove('show');
+  listBox.innerHTML = '<div class="loading-line">加载中…</div>';
+  listBox.style.display = 'flex';
+  try {
+    const p = state.page[tab];
+    const data = tab === 'chat'
+      ? await api(`/api/conversations?page=${p}&size=${PAGE_SIZE}`)
+      : await api(`/api/reports?page=${p}&size=${PAGE_SIZE}`);
+    state.total[tab] = data.total;
+    renderList(data.list);
+  } catch (e) {
+    listBox.innerHTML = '';
+    listBox.style.display = 'none';
+    document.getElementById('empty').classList.add('show');
+    toast(e.message, 'error');
+  }
+  updatePager();
+}
+
+function itemHTML(d, tab) {
+  if (tab === 'chat') {
+    return `<div class="item" data-id="${d.id}" data-tab="chat">
+      <div class="item-icon icon-chat">💬</div>
+      <div class="item-main"><div class="item-title">${escapeHtml(d.title)}</div>
+        <div class="item-sub"><span>🕒 ${d.updated_at}</span><span>${d.message_count} 条消息</span></div></div>
+      <button class="btn-del" data-del-chat="${d.id}">删除</button>
+    </div>`;
+  }
+  return `<div class="item" data-id="${d.id}" data-tab="report">
+    <div class="item-icon icon-rep">📋</div>
+    <div class="item-main"><div class="item-title">${escapeHtml(d.file_name)}
+        ${d.has_critical ? '<span class="tag crit">🚨 建议尽快就医</span>' : ''}</div>
+      <div class="item-sub"><span>🕒 ${d.created_at}</span>
+      <span class="tag abn">${d.abnormal_count} 项异常</span><span>${escapeHtml(d.summary || '')}</span></div></div>
+    <button class="btn-del" data-del-report="${d.id}">删除</button>
+  </div>`;
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderList(list) {
+  const listBox = document.getElementById('listBox');
+  const empty = document.getElementById('empty');
+  if (!list.length) {
+    listBox.style.display = 'none'; listBox.innerHTML = '';
+    empty.classList.add('show');
+    return;
+  }
+  empty.classList.remove('show');
+  listBox.style.display = 'flex';
+  listBox.innerHTML = list.map(d => itemHTML(d, state.tab)).join('');
+}
+
+function updatePager() {
+  const tab = state.tab;
+  const tp = Math.max(1, Math.ceil(state.total[tab] / PAGE_SIZE));
+  if (state.page[tab] > tp) state.page[tab] = tp;
+  document.getElementById('btnPrev').disabled = state.page[tab] <= 1;
+  document.getElementById('btnNext').disabled = state.page[tab] >= tp;
+  document.getElementById('pgInfo').textContent =
+    `${state.total[tab] ? state.page[tab] : 0} / ${tp}（共 ${state.total[tab]} 条）`;
+}
+
+document.getElementById('btnPrev').addEventListener('click', () => {
+  if (state.page[state.tab] > 1) { state.page[state.tab]--; loadList(); }
+});
+document.getElementById('btnNext').addEventListener('click', () => {
+  const tp = Math.max(1, Math.ceil(state.total[state.tab] / PAGE_SIZE));
+  if (state.page[state.tab] < tp) { state.page[state.tab]++; loadList(); }
+});
+
+/* ==================== 点击条目 → 详情视图 ==================== */
+let currentReportId = null;
+
+document.querySelector('.list-wrap').addEventListener('click', async e => {
+  const delChat = e.target.closest('[data-del-chat]');
+  const delRep  = e.target.closest('[data-del-report]');
+  if (delChat || delRep) {                                  // 删除：二次确认（FR-14）
+    const id = (delChat || delRep).dataset[delChat ? 'delChat' : 'delReport'];
+    const path = delChat ? '/api/conversations/' : '/api/report/';
+    if (!confirm('确定要删除该条历史记录吗？删除后不可恢复。')) return;
+    try {
+      await api(path + id, { method: 'DELETE' });
+      toast('记录已删除');
+      state.total[state.tab] = Math.max(0, state.total[state.tab] - 1);
+      loadList();
+    } catch (err) { toast(err.message, 'error'); }
+    return;
+  }
+  e.preventDefault();
+  const item = e.target.closest('.item');
+  if (!item) return;
+  if (item.dataset.tab === 'chat') openChatDetail(Number(item.dataset.id));
+  else openReportDetail(Number(item.dataset.id));
+});
+
+function showDetail(isReport, title) {
+  document.getElementById('listView').style.display = 'none';
+  const dv = document.getElementById('detailView');
+  dv.style.display = 'flex';
+  document.getElementById('detailHead').className = 'detail-head' + (isReport ? ' report' : '');
+  document.getElementById('detailTitle').textContent = title;
+  document.getElementById('btnDl').style.display = isReport ? 'inline-block' : 'none';
+  document.getElementById('detailBody').innerHTML = '<div class="loading-line">加载中…</div>';
+}
+document.getElementById('btnBackList').addEventListener('click', () => {
+  document.getElementById('detailView').style.display = 'none';
+  document.getElementById('listView').style.display = 'flex';
+  loadList();
+});
+
+async function openChatDetail(id) {
+  showDetail(false, '咨询会话');
+  try {
+    const d = await api('/api/conversations/' + id);
+    document.getElementById('detailTitle').textContent = d.conversation.title;
+    document.getElementById('detailBody').innerHTML = d.messages.map(m =>
+      m.role === 'user'
+        ? `<div class="msg user"><div class="bubble-user">${escapeHtml(m.content)}</div></div>`
+        : `<div class="msg"><div class="avatar">🤖</div><div><div class="bubble-ai"><div class="md-block">${renderMarkdown(m.content)}</div></div></div></div>`
+    ).join('') + '<div class="warn-note">以上历史建议仅供参考，不构成医疗诊断，请以专业医生面诊结果为准。</div>';
+  } catch (e) {
+    document.getElementById('detailBody').innerHTML =
+      `<div class="loading-line" style="color:var(--danger)">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function openReportDetail(id) {
+  showDetail(true, '报告分析');
+  currentReportId = id;
+  try {
+    const d = await api('/api/report/' + id);
+    document.getElementById('detailTitle').textContent = d.file_name;
+    const r = d.result;
+    let html = d.has_critical ? '<div class="critical-bar">🚨 检出严重异常指标，建议尽快就医！</div>' : '';
+    html += '<h4>📌 基本信息</h4><div class="base-info">' +
+      `<div><b>姓名：</b>${escapeHtml(r.basic_info.name || '—')}</div>` +
+      `<div><b>性别：</b>${escapeHtml(r.basic_info.gender || '—')}</div>` +
+      `<div><b>年龄：</b>${escapeHtml(r.basic_info.age || '—')}</div>` +
+      `<div><b>体检日期：</b>${escapeHtml(r.basic_info.report_date || '—')}</div>` +
+      `<div style="grid-column:1/-1"><b>体检机构：</b>${escapeHtml(r.basic_info.org || '—')}</div></div>` +
+      '<h4>⚠️ 异常项明细</h4>';
+    html += r.abnormal_items.length
+      ? r.abnormal_items.map(a => `<div class="abn-item">
+          <div class="abn-top"><span class="abn-name">${escapeHtml(a.name)}${a.critical ? ' 🚨' : ''}</span>
+          <span class="tag ${a.status}">${a.label}</span></div>
+          <div class="abn-vals">检测值：${escapeHtml(a.value)} ｜ 参考范围：${escapeHtml(a.ref)}</div>
+          <div class="abn-adv">${escapeHtml(a.advice)}</div></div>`).join('')
+      : '<div class="result"><div class="para">未检出明显异常指标。</div></div>';
+    html += `<h4>💡 总体健康建议</h4><div class="para">${renderMarkdown(r.overall_advice)}</div>
+             <h4>📋 注意事项</h4><div class="warn-note">${escapeHtml(r.precautions)}</div>`;
+    document.getElementById('detailBody').innerHTML = html;
+  } catch (e) {
+    document.getElementById('detailBody').innerHTML =
+      `<div class="loading-line" style="color:var(--danger)">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+/* 详情内下载（复用后端导出接口，成功返回文本流） */
+document.getElementById('btnDl').addEventListener('click', async () => {
+  try {
+    const resp = await fetch(`${API_BASE}/api/report/${currentReportId}/download`,
+                             { headers: { 'X-Token': TOKEN } });
+    const ct = resp.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {                 // JSON = 业务错误
+      const body = await resp.json();
+      throw { message: body.message || '下载失败，请重试' };
+    }
+    const text = await resp.text();
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '体检报告分析结果.txt';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('报告已开始下载');
+  } catch (e) { toast(e.message || '下载失败，请重试', 'error'); }
+});
+
+/* ==================== 初始化 ==================== */
+loadList();
+</script>
+</body>
+</html>

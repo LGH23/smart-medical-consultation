@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能问诊系统 - 交互原型</title>
+<style>
+  :root {
+    --teal: #1a7a6e;
+    --teal-deep: #0d6e63;
+    --teal-light: #e6f4f1;
+    --purple: #6c5ce7;
+    --bg: #eef2f1;
+    --warn-bg: #fff8dd;
+    --warn-border: #f0d878;
+    --danger: #e74c3c;
+    --ok: #27ae60;
+    --text: #2d3b38;
+    --text-sub: #7a8a86;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-width: 1024px;
+  }
+  /* 全屏固定应用布局：页面本身永不滚动 */
+  .app {
+    max-width: 1080px; margin: 0 auto; padding: 16px 16px 8px;
+    display: flex; flex-direction: column;
+    height: 100vh; height: 100dvh;   /* 兼容移动端动态视口 */
+  }
+  /* 细滚动条（仅出现在消息列表/右面板内部） */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #b0b0b0; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  /* ===== 顶部横幅 ===== */
+  .banner {
+    background: linear-gradient(135deg, var(--teal) 0%, var(--teal-deep) 60%, #0a5a51 100%);
+    border-radius: 16px;
+    padding: 28px 20px 24px;
+    text-align: center;
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(13, 110, 99, .18);
+    margin-bottom: 16px;
+    flex-shrink: 0;                 /* 标题栏固定不滚动、不被压缩 */
+  }
+  .banner h1 { font-size: 26px; letter-spacing: 2px; }
+  .banner p { font-size: 13px; opacity: .85; margin-top: 8px; letter-spacing: 1px; }
+
+  /* ===== 双栏布局：占满剩余高度，min-height:0 防止被内容撑破 ===== */
+  .main {
+    display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr);
+    gap: 18px; align-items: stretch;
+    flex: 1; min-height: 0;
+  }
+
+  .card { background: #fff; border-radius: 14px; box-shadow: 0 3px 12px rgba(45, 80, 75, .08); overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+  .card-header { padding: 13px 16px; color: #fff; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: space-between; }
+  .chat-header { background: var(--teal); }
+  .report-header { background: var(--purple); }
+
+  /* ===== 左：聊天区 ===== */
+  .btn-clear {
+    background: rgba(255,255,255,.18); border: none; color: #fff; font-size: 13px;
+    padding: 5px 12px; border-radius: 8px; cursor: pointer; transition: background .2s, box-shadow .2s;
+  }
+  .btn-clear:hover { background: rgba(255,255,255,.32); box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+
+  .chat-box { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 16px; background: #fbfdfc; }  /* 全页唯一强制滚动区 */
+  .msg { display: flex; margin-bottom: 16px; }
+  .msg.user { justify-content: flex-end; }
+  .avatar {
+    width: 34px; height: 34px; border-radius: 50%; flex: none; margin-right: 10px;
+    background: var(--teal-light); display: flex; align-items: center; justify-content: center; font-size: 18px;
+    box-shadow: 0 1px 4px rgba(26,122,110,.15);
+  }
+  .bubble-ai {
+    background: var(--teal-light); border: 1px solid #d5ebe6; border-radius: 4px 12px 12px 12px;
+    padding: 12px 14px; max-width: 78%; font-size: 14px; line-height: 1.7;
+  }
+  .bubble-user {
+    background: var(--teal); color: #fff; border-radius: 12px 4px 12px 12px;
+    padding: 10px 14px; max-width: 70%; font-size: 14px; line-height: 1.6;
+    box-shadow: 0 2px 6px rgba(26,122,110,.25); white-space: pre-wrap; word-break: break-word;
+  }
+  .tip-bar {
+    margin-top: 10px; background: var(--warn-bg); border: 1px solid var(--warn-border);
+    border-radius: 8px; padding: 8px 10px; font-size: 12.5px; color: #8a6d1a; line-height: 1.6;
+  }
+  /* Markdown 渲染 */
+  .md-block p { margin: 4px 0; }
+  .md-h { font-weight: 700; color: var(--teal-deep); margin: 10px 0 4px; font-size: 14px; }
+  .md-block ul { margin: 4px 0 6px; padding-left: 2px; list-style: none; }
+  .md-block li { padding-left: 16px; position: relative; margin: 3px 0; }
+  .md-block li::before { content: "●"; color: var(--teal); position: absolute; left: 2px; font-size: 10px; top: 4px; }
+  .caret { display: inline-block; width: 2px; height: 14px; background: var(--teal); vertical-align: -2px; animation: blink .6s infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .dots span { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--teal); margin: 0 2px; animation: jump 1s infinite; }
+  .dots span:nth-child(2) { animation-delay: .18s; } .dots span:nth-child(3) { animation-delay: .36s; }
+  @keyframes jump { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
+
+  .input-area { border-top: 1px solid #e8efed; padding: 12px; display: flex; gap: 10px; background: #fff; flex-shrink: 0; }  /* 钉在聊天面板底部 */
+  .input-area textarea {
+    flex: 1; resize: none; height: 52px; border: 1px solid #d7e3e0; border-radius: 10px;
+    padding: 10px 12px; font-size: 14px; font-family: inherit; outline: none; transition: border-color .2s, box-shadow .2s;
+    background: #fbfdfc;
+  }
+  .input-area textarea:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(26,122,110,.12); }
+  .btn-send {
+    flex: none; background: var(--teal); color: #fff; border: none; border-radius: 10px;
+    padding: 0 22px; font-size: 14px; font-weight: 700; cursor: pointer; transition: background .2s, box-shadow .2s, opacity .2s;
+  }
+  .btn-send:hover:not(:disabled) { background: var(--teal-deep); box-shadow: 0 3px 8px rgba(26,122,110,.35); }
+  .btn-send:disabled { opacity: .55; cursor: not-allowed; }
+
+  /* ===== 右：报告分析面板 ===== */
+  .report-body { padding: 16px; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }  /* 溢出时右面板内部独立滚动，不影响页面 */
+  .upload-zone {
+    border: 2px dashed #b9c7c4; border-radius: 14px; background: #f8fbfa;
+    padding: 34px 16px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s, box-shadow .2s;
+  }
+  .upload-zone:hover { border-color: var(--teal); box-shadow: 0 2px 10px rgba(26,122,110,.10); }
+  .upload-zone.dragover { border-color: var(--teal); background: var(--teal-light); }
+  .upload-zone .icon { font-size: 38px; color: #f5b942; }
+  .upload-zone .lead { font-size: 14px; font-weight: 700; margin-top: 10px; }
+  .upload-zone .sub { font-size: 12px; color: var(--text-sub); margin-top: 6px; }
+  .btn-pick {
+    margin-top: 14px; background: var(--teal); color: #fff; border: none; border-radius: 9px;
+    padding: 8px 22px; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: background .2s, box-shadow .2s, opacity .2s;
+  }
+  .btn-pick:hover:not(:disabled) { background: var(--teal-deep); box-shadow: 0 3px 8px rgba(26,122,110,.3); }
+  .btn-pick:disabled { opacity: .55; cursor: not-allowed; }
+  .file-card {
+    display: none; margin-top: 12px; background: var(--teal-light); border: 1px solid #d5ebe6;
+    border-radius: 10px; padding: 10px 12px; font-size: 13px; align-items: center; gap: 8px; word-break: break-all;
+  }
+  .file-card .size { color: var(--text-sub); font-size: 12px; }
+
+  .analyzing { display: none; text-align: center; padding: 46px 0; }
+  .spinner {
+    width: 40px; height: 40px; border: 4px solid #d5ebe6; border-top-color: var(--teal);
+    border-radius: 50%; margin: 0 auto 14px; animation: spin .9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .analyzing p { font-size: 13.5px; color: var(--teal-deep); font-weight: 600; }
+
+  .result { display: none; }
+  .result h4 { font-size: 13.5px; color: var(--purple); margin: 14px 0 6px; }
+  .result h4:first-child { margin-top: 0; }
+  .base-info { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 12.5px; background: #f8f7fd; border-radius: 10px; padding: 10px 12px; }
+  .base-info b { color: var(--text-sub); font-weight: 600; }
+  .abn-item { border: 1px solid #eae4fb; background: #faf9fe; border-radius: 10px; padding: 10px 12px; font-size: 12.5px; margin-bottom: 8px; }
+  .abn-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .abn-name { font-weight: 700; font-size: 13px; }
+  .tag { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 700; white-space: nowrap; }
+  .tag.high { background: #fdecea; color: var(--danger); }
+  .tag.low  { background: #fff3e0; color: #e67e22; }
+  .abn-vals { color: var(--text-sub); margin-top: 4px; }
+  .abn-adv { margin-top: 5px; line-height: 1.6; }
+  .abn-adv::before { content: "改进方案："; color: var(--purple); font-weight: 700; }
+  .result .para { font-size: 12.5px; line-height: 1.7; color: var(--text); }
+  .result .warn-note { background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #8a6d1a; line-height: 1.6; margin-top: 6px; }
+  .btn-row { display: flex; gap: 10px; margin-top: 16px; }
+  .btn-dl, .btn-re {
+    flex: 1; border: none; border-radius: 9px; padding: 9px 0; font-size: 13px; font-weight: 700; cursor: pointer;
+    transition: background .2s, box-shadow .2s;
+  }
+  .btn-dl { background: var(--purple); color: #fff; }
+  .btn-dl:hover { background: #5a4bd1; box-shadow: 0 3px 8px rgba(108,92,231,.35); }
+  .btn-re { background: #fff; color: var(--purple); border: 1.5px solid var(--purple); }
+  .btn-re:hover { background: #f3f1fd; box-shadow: 0 2px 6px rgba(108,92,231,.2); }
+
+  /* ===== 底部 ===== */
+  .footer { text-align: center; color: #93a19d; font-size: 12px; padding: 10px 0 4px; flex-shrink: 0; }
+
+  /* ===== Toast ===== */
+  #toast-wrap { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); z-index: 999; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .toast {
+    padding: 10px 22px; border-radius: 10px; font-size: 13.5px; color: #fff; box-shadow: 0 6px 18px rgba(0,0,0,.18);
+    animation: pop .25s ease; max-width: 520px;
+  }
+  .toast.error { background: var(--danger); }
+  .toast.warn { background: #e6a23c; }
+  .toast.ok { background: var(--ok); }
+  @keyframes pop { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+
+  .shake { animation: shake .3s; }
+  @keyframes shake { 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 顶部横幅 -->
+  <header class="banner">
+    <h1>智能问诊系统</h1>
+    <p>AI驱动的健康问答与体检报告分析服务</p>
+  </header>
+
+  <div class="main">
+    <!-- 左：健康咨询 -->
+    <section class="card">
+      <div class="card-header chat-header">
+        <span>💬 健康咨询</span>
+        <button class="btn-clear" id="btnClear">🗑 清空</button>
+      </div>
+      <div class="chat-box" id="chatBox"></div>
+      <div class="input-area">
+        <textarea id="chatInput" placeholder="输入您的健康问题，按Enter发送，Shift+Enter换行…"></textarea>
+        <button class="btn-send" id="btnSend">发送 ➤</button>
+      </div>
+    </section>
+
+    <!-- 右：体检报告分析 -->
+    <aside class="card">
+      <div class="card-header report-header"><span>📋 体检报告分析</span></div>
+      <div class="report-body">
+        <div class="upload-zone" id="uploadZone">
+          <div class="icon">📁</div>
+          <div class="lead">点击或拖拽PDF文件到此处</div>
+          <div class="sub">仅支持PDF格式，大小不超过10MB</div>
+          <button class="btn-pick" id="btnPick">选择文件</button>
+          <input type="file" id="fileInput" accept=".pdf,application/pdf" hidden>
+        </div>
+        <div class="file-card" id="fileCard">
+          <span>📄</span><span id="fileName"></span><span class="size" id="fileSize"></span>
+        </div>
+
+        <div class="analyzing" id="analyzing">
+          <div class="spinner"></div>
+          <p>AI正在分析体检报告，请稍候…</p>
+        </div>
+
+        <div class="result" id="result"></div>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="footer">智能问诊系统 v1.0 | 仅供健康咨询使用，不替代专业医疗建议</footer>
+</div>
+
+<div id="toast-wrap"></div>
+
+<script>
+"use strict";
+/* ==================== 通用：Toast ==================== */
+function toast(msg, type) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type || 'ok');
+  el.textContent = msg;
+  document.getElementById('toast-wrap').appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; }, 2600);
+  setTimeout(() => el.remove(), 3000);
+}
+
+/* ==================== 聊天模块 ==================== */
+const chatBox = document.getElementById('chatBox');
+const chatInput = document.getElementById('chatInput');
+const btnSend = document.getElementById('btnSend');
+const btnClear = document.getElementById('btnClear');
+let streaming = false;
+
+function el(html) {
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  return t.content.firstChild;
+}
+
+/* 极简行式 Markdown 渲染：### 标题、- 列表、**加粗**，逐行解析保证流式过程不出现半截标签 */
+function renderMarkdown(text) {
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const inline = s => esc(s).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  let html = '', inList = false;
+  for (const line of text.split('\n')) {
+    if (/^###\s+/.test(line)) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += '<div class="md-h">' + inline(line.replace(/^###\s+/, '')) + '</div>';
+    } else if (/^[-•●]\s*/.test(line)) {
+      if (!inList) { html += '<ul>'; inList = true; }
+      html += '<li>' + inline(line.replace(/^[-•●]\s*/, '')) + '</li>';
+    } else if (line.trim() === '') {
+      if (inList) { html += '</ul>'; inList = false; }
+    } else {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += '<p>' + inline(line) + '</p>';
+    }
+  }
+  if (inList) html += '</ul>';
+  return html;
+}
+
+const WELCOME_TEXT = '您好！我是您的AI健康助手。我可以帮您：\n- 解答常见健康问题\n- 分析体检报告中的异常项\n- 提供专业改进建议';
+
+function appendWelcome() {
+  const m = el(`<div class="msg ai">
+      <div class="avatar">🤖</div>
+      <div><div class="bubble-ai"><div class="md-block">${renderMarkdown(WELCOME_TEXT)}</div>
+      <div class="tip-bar">⚠️ 温馨提示：AI建议仅供参考，如有疑虑请咨询专业医生。</div></div></div>
+    </div>`);
+  chatBox.appendChild(m);
+  scrollBottom();
+}
+
+/* 智能吸底：force=新消息产生时强制滚底；打字机增量仅当用户停在底部附近时跟随，不打断手动上翻 */
+function scrollBottom(force) {
+  const nearBottom = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight < 120;
+  if (force || nearBottom) chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function appendUserMsg(text) {
+  const m = el(`<div class="msg user"><div class="bubble-user"></div></div>`);
+  m.querySelector('.bubble-user').textContent = text;
+  chatBox.appendChild(m);
+  scrollBottom();
+}
+
+function appendThinking() {
+  const m = el(`<div class="msg ai"><div class="avatar">🤖</div>
+    <div><div class="bubble-ai"><span class="dots"><span></span><span></span><span></span></span> 正在思考…</div></div></div>`);
+  chatBox.appendChild(m);
+  scrollBottom();
+  return m;
+}
+
+/* 预置结构化模拟回复（五段式，Markdown 列表格式） */
+const MOCK_REPLY =
+`已收到您的健康问题，以下从五个方面为您解答：
+
+### ① 症状分析
+- 牙痛常见原因包括**龋齿、牙龈炎、智齿冠周炎**等
+- 夜间加重、冷热刺激痛多提示牙髓可能受累
+- 具体原因需口腔科检查确认（此处非诊断结论）
+
+### ② 缓解建议
+- 可用冷水袋冷敷面颊，每次 10–15 分钟
+- 避免过冷、过热、过甜等刺激性食物
+- 用另一侧咀嚼，饭后温水漱口保持口腔清洁
+
+### ③ 需警惕事项
+- **不要自行服用抗生素**，须遵医嘱用药
+- 不要用偏方（如含花椒、抹酒精）止疼，可能刺激黏膜
+- 不要长期依赖止疼药掩盖症状而拖延就医
+
+### ④ 何时就医
+- 持续 **1–2 天未缓解**：建议就诊口腔科
+- 伴随**发热、面部肿胀、出血或剧痛**：请尽快就医
+- 若为智齿反复发炎：建议炎症控制后评估拔牙
+
+### ⑤ 温馨提示
+以上建议**仅供参考，不构成诊断**，请以专业医生面诊结果为准。`;
+
+function typewriter(bubbleBody, text, done) {
+  let i = 0;
+  const step = 3;                     /* 每次输出的字符数 */
+  const timer = setInterval(() => {
+    i += step;
+    const partial = text.slice(0, i);
+    bubbleBody.innerHTML = renderMarkdown(partial) + '<span class="caret"></span>';
+    scrollBottom();
+    if (i >= text.length) {
+      clearInterval(timer);
+      bubbleBody.innerHTML = renderMarkdown(text);
+      scrollBottom();
+      done();
+    }
+  }, 25);
+}
+
+function setSendState(busy) {
+  streaming = busy;
+  btnSend.disabled = busy;
+  btnSend.textContent = busy ? '回复中…' : '发送 ➤';
+}
+
+function sendMessage() {
+  if (streaming) return;
+  const raw = chatInput.value;
+  if (!raw.trim()) {
+    toast('请先输入您的健康问题', 'warn');
+    chatInput.focus();
+    chatInput.classList.add('shake');
+    setTimeout(() => chatInput.classList.remove('shake'), 350);
+    return;
+  }
+  if (raw.length > 2000) {
+    toast('输入内容超过 2000 字符，请精简后发送', 'error');
+    chatInput.focus();
+    return;
+  }
+  appendUserMsg(raw.trim());
+  chatInput.value = '';
+  setSendState(true);
+
+  const thinking = appendThinking();
+  setTimeout(() => {
+    thinking.remove();
+    const m = el(`<div class="msg ai"><div class="avatar">🤖</div>
+      <div><div class="bubble-ai"><div class="md-block"></div>
+      <div class="tip-bar">⚠️ 温馨提示：AI建议仅供参考，如有疑虑请咨询专业医生。</div></div></div>`);
+    chatBox.appendChild(m);
+    typewriter(m.querySelector('.md-block'), MOCK_REPLY, () => setSendState(false));
+  }, 700);
+}
+
+btnSend.addEventListener('click', sendMessage);
+chatInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+btnClear.addEventListener('click', () => {
+  if (streaming) { toast('AI 正在回复中，请稍后再清空', 'warn'); return; }
+  if (confirm('确定要清空当前对话吗？清空后无法恢复。')) {
+    chatBox.innerHTML = '';
+    appendWelcome();
+    chatInput.value = '';
+    toast('对话已清空');
+  }
+});
+
+/* ==================== 体检报告分析模块 ==================== */
+const uploadZone = document.getElementById('uploadZone');
+const btnPick = document.getElementById('btnPick');
+const fileInput = document.getElementById('fileInput');
+const fileCard = document.getElementById('fileCard');
+const analyzing = document.getElementById('analyzing');
+const resultBox = document.getElementById('result');
+let analyzingFlag = false;
+
+/* 模拟分析结果数据（四段式，含 ≥2 条异常项） */
+const MOCK_REPORT = {
+  base: { 姓名: '张 *（示例）', 性别: '男', 年龄: '42 岁', 体检日期: '2026-09-15', 体检机构: '示例人民医院体检中心', 报告编号: 'TJ2026091500' },
+  abnormal: [
+    { name: '血压（收缩压）', value: '145 mmHg', ref: '90–140 mmHg', status: 'high', label: '⚠️ 偏高',
+      adv: '低盐饮食（每日食盐 <5g），规律有氧运动每周 ≥150 分钟，监测家庭血压；若多次 ≥140 请心内科就诊。' },
+    { name: '空腹血糖', value: '6.8 mmol/L', ref: '3.9–6.1 mmol/L', status: 'high', label: '⚠️ 偏高',
+      adv: '控制精制糖与总热量摄入，增加膳食纤维，减重 5%–10%；建议 1 个月内复查空腹血糖及糖化血红蛋白。' },
+    { name: '高密度脂蛋白胆固醇', value: '0.9 mmol/L', ref: '1.0–1.7 mmol/L', status: 'low', label: '⚠️ 偏低',
+      adv: '戒烟、增加有氧运动有助于提升该指标；减少反式脂肪摄入，3 个月后复查血脂四项。' }
+  ],
+  summary: '本次体检整体提示存在**代谢相关异常倾向**（血压、血糖、血脂三项异常互相关联）。目前未见急危值，但已达到需要生活方式干预的程度。建议以"限盐限糖、规律运动、控制体重"为核心进行调整，并在 1–3 个月内针对性复查。',
+  caution: '血压多次测量 ≥140/90 mmHg 或血糖复查仍偏高时，请及时就医评估是否需要药物干预；如出现头痛、视物模糊、胸闷等症状应立即就诊。'
+};
+
+function switchPanel(stage) {
+  uploadZone.style.display  = stage === 'upload'  ? 'block' : 'none';
+  analyzing.style.display   = stage === 'analyzing' ? 'block' : 'none';
+  resultBox.style.display   = stage === 'result'  ? 'block' : 'none';
+}
+
+function validateFile(file) {
+  const isPdf = /\.pdf$/i.test(file.name) && (file.type === 'application/pdf' || file.type === '');
+  if (!isPdf) return '仅支持 PDF 格式';
+  if (file.size === 0) return '文件无效，请重新选择';
+  if (file.size > 10 * 1024 * 1024) return '文件大小不能超过 10MB';
+  return null;
+}
+
+function fmtSize(bytes) {
+  return bytes < 1024 * 1024 ? (bytes / 1024).toFixed(1) + ' KB' : (bytes / 1024 / 1024).toFixed(2) + ' MB';
+}
+
+function handleFile(file) {
+  if (analyzingFlag) { toast('报告解析中，请勿重复提交', 'warn'); return; }   /* BR：解析中阻止并发 */
+  const err = validateFile(file);
+  if (err) {
+    toast(err, 'error');
+    uploadZone.classList.add('shake');
+    setTimeout(() => uploadZone.classList.remove('shake'), 350);
+    return;
+  }
+  /* 展示文件卡片 */
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileSize').textContent = fmtSize(file.size);
+  fileCard.style.display = 'flex';
+
+  /* 进入分析加载态 */
+  analyzingFlag = true;
+  btnPick.disabled = true;
+  uploadZone.style.pointerEvents = 'none';
+  uploadZone.style.opacity = '.45';
+  switchPanel('analyzing');
+
+  /* 2.5s 后展示模拟结果 */
+  setTimeout(() => {
+    analyzingFlag = false;
+    renderResult();
+    switchPanel('result');
+    toast('体检报告分析完成');
+  }, 2500);
+}
+
+function renderResult() {
+  const r = MOCK_REPORT;
+  let html = '<h4>📌 基本信息</h4><div class="base-info">';
+  for (const [k, v] of Object.entries(r.base)) html += `<div><b>${k}：</b>${v}</div>`;
+  html += '</div><h4>⚠️ 异常项明细</h4>';
+  for (const a of r.abnormal) {
+    html += `<div class="abn-item">
+      <div class="abn-top"><span class="abn-name">${a.name}</span><span class="tag ${a.status}">${a.label}</span></div>
+      <div class="abn-vals">检测值：${a.value} ｜ 参考范围：${a.ref}</div>
+      <div class="abn-adv">${a.adv}</div></div>`;
+  }
+  html += `<h4>💡 总体健康建议</h4><div class="para">${renderMarkdown(r.summary)}</div>
+           <h4>📋 注意事项</h4><div class="warn-note">${r.caution}</div>
+           <div class="warn-note">本分析结果仅供参考，不替代专业医疗建议，请以医生诊断为准。</div>
+           <div class="btn-row">
+             <button class="btn-dl" id="btnDownload">⬇ 下载报告</button>
+             <button class="btn-re" id="btnReanalyze">🔄 重新分析</button>
+           </div>`;
+  resultBox.innerHTML = html;
+  document.getElementById('btnDownload').addEventListener('click', downloadReport);
+  document.getElementById('btnReanalyze').addEventListener('click', reanalyze);
+}
+
+function downloadReport() {
+  const r = MOCK_REPORT;
+  let t = '—— 智能问诊系统 · 体检报告分析结果 ——\n（仅供参考，不替代专业医疗建议）\n\n【基本信息】\n';
+  for (const [k, v] of Object.entries(r.base)) t += `${k}：${v}\n`;
+  t += '\n【异常项明细】\n';
+  r.abnormal.forEach((a, i) => {
+    t += `${i + 1}. ${a.name}  ${a.value}（参考：${a.ref}）${a.label}\n   改进方案：${a.adv}\n`;
+  });
+  t += `\n【总体健康建议】\n${r.summary.replace(/\*\*/g, '')}\n\n【注意事项】\n${r.caution}\n`;
+  const blob = new Blob(['﻿' + t], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '体检报告分析结果.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('报告已开始下载');
+}
+
+function reanalyze() {
+  resultBox.innerHTML = '';
+  resultBox.style.display = 'none';
+  fileCard.style.display = 'none';
+  fileInput.value = '';
+  btnPick.disabled = false;
+  uploadZone.style.pointerEvents = '';
+  uploadZone.style.opacity = '';
+  switchPanel('upload');
+  toast('已重置，请上传新的体检报告');
+}
+
+/* 上传交互：点击 / 按钮 / 拖拽 */
+btnPick.addEventListener('click', e => { e.stopPropagation(); if (!analyzingFlag) fileInput.click(); });
+uploadZone.addEventListener('click', () => { if (!analyzingFlag) fileInput.click(); });
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+['dragleave'].forEach(ev => uploadZone.addEventListener(ev, () => uploadZone.classList.remove('dragover')));
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+/* 阻止页面级拖拽默认打开文件行为 */
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => e.preventDefault());
+
+/* ==================== 初始化 ==================== */
+appendWelcome();
+</script>
+</body>
+</html>
